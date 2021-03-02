@@ -27,6 +27,7 @@ const Game = {
     background: undefined,
     pipe: undefined,
     bird: undefined,
+    score: 0,
 
     init() {
         this.canvas = document.getElementById("game")
@@ -86,8 +87,8 @@ const Game = {
         this.preload().then(() => {
             this.background.init()
             this.pipe.init()
-            this.run()
             this.bird.init()
+            this.run()
         })
     },
 
@@ -121,11 +122,12 @@ const Game = {
     restart(){
         this.bird.restart()
         this.pipe.restart()
+        this.score = 0
     },
 
     update(){
         this.background.move()
-        this.bird.move()
+        this.bird.update()
         this.pipe.update()
     },
 
@@ -134,11 +136,22 @@ const Game = {
         this.background.render()
         this.pipe.render()
         this.bird.render()
+        this.renderText()
     },
 
     renderSky(){
         this.ctx.fillStyle = '#ADE9F4'
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+    },
+
+    renderText(){
+        this.ctx.fillStyle = '#fff'
+        this.ctx.font = "27px 'Trebuchet MS'"
+        this.ctx.fillText(this.score, 15, this.height - 10)
+    },
+
+    addScore(){
+        ++this.score
     },
 }
 
@@ -296,6 +309,14 @@ Game.pipe = {
             this.game.ctx.restore()
         })
     },
+
+    isPassed(index){
+        return this.pipes[index].passed
+    },
+
+    setPassed(index){
+        this.pipes[index].passed = true
+    },
 }
 
 Game.bird = {
@@ -345,10 +366,6 @@ Game.bird = {
     },
 
     move(){
-        this.update()
-    },
-
-    update() {
         this.gravitySpeed += this.gravity;
         this.y += this.gravitySpeed;
 
@@ -358,6 +375,20 @@ Game.bird = {
 
         this.angle.current += .5
         this.setNormalAngle()
+    },
+
+    update() {
+        this.move()
+        this.checkPipePassed()
+    },
+
+    checkPipePassed(){
+        this.game.pipe.pipes.map((pipe, index) => {
+            if (pipe.x + this.game.pipe.width < this.x && !this.game.pipe.isPassed(index)) {
+                this.game.pipe.setPassed(index)
+                this.game.addScore()
+            }
+        })
     },
 
     isBirdCollideWithPipes(){
