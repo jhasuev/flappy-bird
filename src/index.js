@@ -8,8 +8,7 @@ const Game = {
     sprites: {
         clouds: undefined,
         land: undefined,
-        pipe_top: undefined,
-        pipe_bottom: undefined,
+        pipe: undefined,
         bird: undefined,
     },
 
@@ -63,9 +62,15 @@ const Game = {
         })
     },
 
+    restart(){
+        this.bird.restart()
+        this.pipe.restart()
+    },
+
     update(){
         this.background.move()
         this.bird.move()
+        this.pipe.update()
     },
 
     render(){
@@ -155,21 +160,72 @@ Game.background = {
 
 Game.pipe = {
     game: Game,
+    width: 80,
+    height: 304,
     pipes: [],
+    distance: {
+        min: 270,
+        max: 350,
+    },
 
     init(){
-        // this
+        this.create()
+    },
+
+    random(min, max){
+        return Math.floor(Math.random() * (max - min + 1) + min)
+    },
+
+    create(){
+        let x = this.random(this.game.width, this.game.width + this.width)
+        let space = this.random(this.game.bird.height * 3, this.game.bird.height * 4)
+        let y = this.random(50, this.height - space)
+
         this.pipes.push({
-            x: 111,
-            y: 111,
-            space: 111,
+            x,
+            y,
+            space,
         })
+    },
+
+    move(){
+        // тут самая дальняя трубу
+        let farPipe = 0
+        this.pipes.forEach(pipe => {
+            pipe.x -= 1
+            farPipe = Math.max(farPipe, pipe.x)
+        })
+
+        // добавить новую трубу, если дистанция позволяет
+        let distance = this.random(this.distance.min, this.distance.max)
+        if (this.game.width - farPipe + this.width > distance) {
+            this.create()
+        }
+    },
+
+    update(){
+        this.move()
+
+        // удалить трубу, если она за границей левого экрана
+        if (this.pipes.length && this.pipes[0].x + this.width < 0) {
+            this.pipes.shift()
+        }
+    },
+
+    restart(){
+        this.pipes = []
     },
 
     render(){
         this.pipes.forEach(pipe => {
-            this.game.ctx.drawImage(this.game.sprites.pipe_top, pipe.x, pipe.y - this.game.sprites.pipe_top.height)
-            this.game.ctx.drawImage(this.game.sprites.pipe_bottom, pipe.x, pipe.y + pipe.space)
+            this.game.ctx.drawImage(this.game.sprites.pipe, pipe.x, pipe.y - this.game.sprites.pipe.height)
+
+            // нижняя труба
+            this.game.ctx.save()
+            this.game.ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2))
+            this.game.ctx.rotate(180 * Math.PI / 180)
+            this.game.ctx.drawImage(this.game.sprites.pipe, -this.width - pipe.x, -this.height - pipe.y - pipe.space)
+            this.game.ctx.restore()
         })
     },
 }
@@ -231,12 +287,25 @@ Game.bird = {
         this.gravitySpeed += this.gravity;
         this.y += this.gravitySpeed;
 
-        if (this.y >= this.game.height || this.y + this.height < 0) {
-            this.restart()
+        if (this.y >= this.game.height || this.y + this.height < 0 || this.isBirdCollideWithPipes()) {
+            this.game.restart()
         }
 
         this.angle.current += .5
         this.setNormalAngle()
+    },
+
+    isBirdCollideWithPipes(){
+        return this.game.pipe.pipes.some(pipe => {
+            let y = this.y + this.gravitySpeed
+
+            return pipe.x < this.x + this.width
+                && pipe.x + this.game.pipe.width > this.x
+                && (
+                    pipe.y > y
+                    || pipe.y + pipe.space < y + (this.height - 10)
+                )
+        })
     },
 
     setNormalAngle(){
