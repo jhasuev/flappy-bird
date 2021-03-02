@@ -1,4 +1,5 @@
 import './styles/main.scss'
+import { isTouchDevice } from "./helper"
 
 const Game = {
     canvas: undefined,
@@ -12,16 +13,71 @@ const Game = {
         bird: undefined,
     },
 
+    dimensions: {
+        max: {
+            width: 640,
+            height: 360,
+        },
+        min: {
+            width: 300,
+            height: 280,
+        },
+    },
+
     background: undefined,
     pipe: undefined,
     bird: undefined,
 
-    init(){
+    init() {
         this.canvas = document.getElementById("game")
         this.ctx = this.canvas.getContext("2d")
 
-        this.width = this.canvas.width = 640
-        this.height = this.canvas.height = 360
+        this.initDimensions()
+        this.setEvents()
+    },
+
+    setEvents(){
+        const clickEventType = isTouchDevice() ? "touchend" : "click"
+        window.addEventListener(clickEventType, () => {
+            this.bird.jump()
+        })
+    },
+
+    initDimensions(){
+        let data = {
+            maxWidth: this.dimensions.max.width,
+            maxHeight: this.dimensions.max.height,
+            minWidth: this.dimensions.min.width,
+            minHeight: this.dimensions.min.height,
+            realWidth: innerWidth,
+            realHeight: innerHeight,
+        }
+
+        this.fitWindow(data)
+
+        this.canvas.width = this.width
+        this.canvas.height = this.height
+    },
+
+    fitWindow(data){
+        let ratioWidth = data.realWidth / data.realHeight
+        let ratioHeight = data.realHeight / data.realWidth
+
+        if (ratioWidth > data.maxWidth / data.maxHeight) {
+            this.height = ratioHeight * data.maxHeight
+            this.height = Math.min(this.height, data.maxHeight)
+            this.height = Math.max(this.height, data.minHeight)
+
+            this.width = ratioWidth * this.height
+            this.canvas.style.width = "100%"
+        } else {
+            this.width = ratioWidth * data.maxHeight
+            this.width = Math.min(this.width, data.maxWidth)
+            this.width = Math.max(this.width, data.minWidth)
+
+            this.height = ratioHeight * this.width
+            this.canvas.style.height = "100%"
+        }
     },
 
     start() {
@@ -114,10 +170,6 @@ Game.background = {
         this.moving = true
     },
 
-    stop(){
-        this.moving = false
-    },
-
     addSlide({ x, type, dx }){
         this[type].push({
             x: x || 0,
@@ -161,7 +213,7 @@ Game.background = {
 Game.pipe = {
     game: Game,
     width: 80,
-    height: 304,
+    height: 17,
     pipes: [],
     distance: {
         min: 270,
@@ -179,8 +231,7 @@ Game.pipe = {
     create(){
         let x = this.random(this.game.width, this.game.width + this.width)
         let space = this.random(this.game.bird.height * 3, this.game.bird.height * 4)
-        let y = this.random(50, this.height - space)
-
+        let y = this.random((this.height * 2), this.game.height - space - (this.height * 2))
         this.pipes.push({
             x,
             y,
@@ -218,12 +269,29 @@ Game.pipe = {
 
     render(){
         this.pipes.forEach(pipe => {
+            // градиент веррхней трубы
+            this.game.ctx.drawImage(this.game.sprites.pipe,
+                0, 0,
+                this.width, 1,
+                pipe.x,
+                pipe.y - this.height - this.game.height,
+                this.width, this.game.height
+            )
             this.game.ctx.drawImage(this.game.sprites.pipe, pipe.x, pipe.y - this.game.sprites.pipe.height)
 
             // нижняя труба
             this.game.ctx.save()
             this.game.ctx.translate(this.x + (this.width / 2), this.y + (this.height / 2))
             this.game.ctx.rotate(180 * Math.PI / 180)
+            // градиент нижней трубы
+            this.game.ctx.drawImage(
+                this.game.sprites.pipe,
+                0, 0,
+                this.width, 1,
+                -this.width - pipe.x,
+                -pipe.y - this.game.height - pipe.space - this.height,
+                this.width, this.game.height
+            )
             this.game.ctx.drawImage(this.game.sprites.pipe, -this.width - pipe.x, -this.height - pipe.y - pipe.space)
             this.game.ctx.restore()
         })
@@ -252,9 +320,6 @@ Game.bird = {
 
     init(){
         this.setBirdPositions()
-        window.addEventListener("touchend", () => {
-            this.jump()
-        })
     },
 
     jump(){
@@ -300,7 +365,7 @@ Game.bird = {
             let y = this.y + this.gravitySpeed
 
             return pipe.x < this.x + this.width
-                && pipe.x + this.game.pipe.width > this.x
+                && pipe.x + this.game.pipe.width > this.x + 10
                 && (
                     pipe.y > y
                     || pipe.y + pipe.space < y + (this.height - 10)
