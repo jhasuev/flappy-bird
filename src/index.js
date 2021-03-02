@@ -32,7 +32,7 @@ const Game = {
             this.background.init()
             this.pipe.init()
             this.run()
-            this.bird.wave()
+            this.bird.init()
         })
     },
 
@@ -65,6 +65,7 @@ const Game = {
 
     update(){
         this.background.move()
+        this.bird.move()
     },
 
     render(){
@@ -177,8 +178,68 @@ Game.bird = {
     game: Game,
     width: 44,
     height: 37,
+    x: undefined,
+    y: undefined,
     frames: 4,
     frame: 0,
+
+    gravity: 0.15,
+    gravitySpeed: 0,
+    gravityJump: 3,
+    angle: -15,
+    angleMin: -15,
+    angleMax: 40,
+    angleJump: 35,
+
+    init(){
+        this.setBirdPositions()
+        window.addEventListener("touchend", () => {
+            this.jump()
+        })
+    },
+
+    jump(){
+        if (this.gravitySpeed > 0) {
+            this.gravitySpeed = -this.gravityJump
+        } else {
+            this.gravitySpeed -= this.gravityJump
+        }
+        this.wave()
+        this.angle -= this.angleJump
+        this.setNormalAngle()
+    },
+
+    setBirdPositions(){
+        this.x = Math.floor(this.game.width / 5)
+        this.y = Math.floor((this.game.height / 2) - (this.height))
+    },
+
+    restart(){
+        this.gravitySpeed = 0
+        this.setBirdPositions()
+        this.angle = 0
+    },
+
+    move(){
+        this.update()
+    },
+
+    update() {
+        this.gravitySpeed += this.gravity;
+        this.y += this.gravitySpeed;
+
+        if (this.y >= this.game.height || this.y + this.height < 0) {
+            this.restart()
+        }
+
+        this.angle += .5
+        this.setNormalAngle()
+    },
+
+    setNormalAngle(){
+        this.angle = Math.min(this.angle, this.angleMax)
+        this.angle = Math.max(this.angle, this.angleMin)
+    },
 
     wave(){
         if (this.frame) return;
@@ -192,7 +253,16 @@ Game.bird = {
     },
 
     render(){
-        this.game.ctx.drawImage(this.game.sprites.bird, this.width * this.frame, 0, this.width, this.height, 0, 0, this.width, this.height)
+        this.game.ctx.save()
+
+        let halfWidth = this.width / 2
+        let halfHeight = this.height / 2
+
+        this.game.ctx.translate(this.x + halfWidth, this.y + halfHeight)
+        this.game.ctx.rotate(this.angle * Math.PI / 180)
+        this.game.ctx.drawImage(this.game.sprites.bird, this.width * this.frame, 0, this.width, this.height, -halfWidth, -halfHeight, this.width, this.height)
+
+        this.game.ctx.restore()
     },
 }
 
