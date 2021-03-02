@@ -162,14 +162,14 @@ Game.pipe = {
         this.pipes.push({
             x: 111,
             y: 111,
-            height: 111,
+            space: 111,
         })
     },
 
     render(){
         this.pipes.forEach(pipe => {
             this.game.ctx.drawImage(this.game.sprites.pipe_top, pipe.x, pipe.y - this.game.sprites.pipe_top.height)
-            this.game.ctx.drawImage(this.game.sprites.pipe_bottom, pipe.x, pipe.y + pipe.height)
+            this.game.ctx.drawImage(this.game.sprites.pipe_bottom, pipe.x, pipe.y + pipe.space)
         })
     },
 }
@@ -186,10 +186,13 @@ Game.bird = {
     gravity: 0.15,
     gravitySpeed: 0,
     gravityJump: 3,
-    angle: -15,
-    angleMin: -15,
-    angleMax: 40,
-    angleJump: 35,
+    angle: {
+        current: -25,
+        default: -25,
+        min: -45,
+        max: 30,
+        jump: 20,
+    },
 
     init(){
         this.setBirdPositions()
@@ -205,7 +208,7 @@ Game.bird = {
             this.gravitySpeed -= this.gravityJump
         }
         this.wave()
-        this.angle -= this.angleJump
+        this.angle.current -= this.angle.jump
         this.setNormalAngle()
     },
 
@@ -217,7 +220,7 @@ Game.bird = {
     restart(){
         this.gravitySpeed = 0
         this.setBirdPositions()
-        this.angle = 0
+        this.angle.current = this.angle.default
     },
 
     move(){
@@ -232,13 +235,13 @@ Game.bird = {
             this.restart()
         }
 
-        this.angle += .5
+        this.angle.current += .5
         this.setNormalAngle()
     },
 
     setNormalAngle(){
-        this.angle = Math.min(this.angle, this.angleMax)
-        this.angle = Math.max(this.angle, this.angleMin)
+        this.angle.current = Math.min(this.angle.current, this.angle.max)
+        this.angle.current = Math.max(this.angle.current, this.angle.min)
     },
 
     wave(){
@@ -249,7 +252,7 @@ Game.bird = {
                 this.frame = 0
                 interval = clearInterval(interval)
             }
-        }, 75)
+        }, 1000 / 24)
     },
 
     render(){
@@ -259,7 +262,7 @@ Game.bird = {
         let halfHeight = this.height / 2
 
         this.game.ctx.translate(this.x + halfWidth, this.y + halfHeight)
-        this.game.ctx.rotate(this.angle * Math.PI / 180)
+        this.game.ctx.rotate(this.angle.current * Math.PI / 180)
         this.game.ctx.drawImage(this.game.sprites.bird, this.width * this.frame, 0, this.width, this.height, -halfWidth, -halfHeight, this.width, this.height)
 
         this.game.ctx.restore()
