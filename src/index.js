@@ -28,20 +28,39 @@ const Game = {
     pipe: undefined,
     bird: undefined,
     score: 0,
+    running: false,
 
     init() {
         this.canvas = document.getElementById("game")
         this.ctx = this.canvas.getContext("2d")
 
-        this.initDimensions()
-        this.setEvents()
+        this.preload().then(() => {
+            this.initDimensions()
+            this.setEvents()
+
+            this.start()
+            this.run()
+
+            this.background.init()
+            this.pipe.init()
+            this.bird.init()
+        })
     },
 
     setEvents(){
         const clickEventType = isTouchDevice() ? "touchend" : "click"
         window.addEventListener(clickEventType, () => {
-            this.bird.jump()
+            this.onEventClick()
         })
+    },
+
+    onEventClick(){
+        if (this.running) {
+            this.bird.jump()
+        } else {
+            this.start()
+            this.running = true
+        }
     },
 
     initDimensions(){
@@ -82,14 +101,13 @@ const Game = {
     },
 
     start() {
-        this.init()
+        this.bird.restart()
+        this.pipe.restart()
+        this.score = 0
+    },
 
-        this.preload().then(() => {
-            this.background.init()
-            this.pipe.init()
-            this.bird.init()
-            this.run()
-        })
+    onFail(){
+        this.running = false
     },
 
     preload(){
@@ -119,35 +137,54 @@ const Game = {
         })
     },
 
-    restart(){
-        this.bird.restart()
-        this.pipe.restart()
-        this.score = 0
-    },
-
     update(){
-        this.background.move()
-        this.bird.update()
-        this.pipe.update()
+        if (this.running) {
+            this.background.move()
+            this.bird.update()
+            this.pipe.update()
+        }
     },
 
     render(){
-        this.renderSky()
         this.background.render()
         this.pipe.render()
         this.bird.render()
         this.renderText()
-    },
-
-    renderSky(){
-        this.ctx.fillStyle = '#ADE9F4'
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+        if (!this.running) {
+            this.renderStartBlock()
+        }
     },
 
     renderText(){
+        this.ctx.save()
+
+        // shadow / text border
+        this.ctx.strokeStyle = 'rgba(0,0,0,.75)'
+        this.ctx.font = "28px 'Trebuchet MS'"
+        this.ctx.strokeText(this.score, 15 - 1, this.height - 10 + 1);
+
+        // text
         this.ctx.fillStyle = '#fff'
         this.ctx.font = "27px 'Trebuchet MS'"
         this.ctx.fillText(this.score, 15, this.height - 10)
+
+        this.ctx.restore()
+    },
+
+    renderStartBlock(){
+        this.ctx.save()
+
+        // block / background
+        this.ctx.fillStyle = 'rgba(0,0,0,.8)'
+        this.ctx.fillRect(0, 0, this.width, this.height)
+
+        // text
+        this.ctx.fillStyle = '#fff'
+        this.ctx.font = "27px 'Trebuchet MS'"
+        this.ctx.textAlign = 'center'
+        this.ctx.fillText('Click to start', this.width / 2, this.height / 2)
+
+        this.ctx.restore()
     },
 
     addScore(){
@@ -214,9 +251,16 @@ Game.background = {
     },
 
     render(){
+        // небо
+        this.game.ctx.fillStyle = '#ADE9F4'
+        this.game.ctx.fillRect(0, 0, this.game.width, this.game.height)
+
+        // облака
         this.clouds.forEach(slide => {
             this.game.ctx.drawImage(this.game.sprites.clouds, slide.x, 0)
         })
+
+        // земля
         this.land.forEach(slide => {
             this.game.ctx.drawImage(this.game.sprites.land, slide.x, this.game.height - this.game.sprites.land.height)
         })
@@ -370,7 +414,7 @@ Game.bird = {
         this.y += this.gravitySpeed;
 
         if (this.y >= this.game.height || this.y + this.height < 0 || this.isBirdCollideWithPipes()) {
-            this.game.restart()
+            this.game.onFail()
         }
 
         this.angle.current += .5
@@ -434,4 +478,4 @@ Game.bird = {
     },
 }
 
-Game.start()
+Game.init()
